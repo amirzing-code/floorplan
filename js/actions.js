@@ -15,6 +15,8 @@ const HINTS = {
   north: 'Click to place a north arrow. Q to rotate 90°, or set any angle in Properties.',
 };
 for (const [k, o] of Object.entries(OPENINGS)) HINTS[k] = `Click on a wall to place ${o.name}. Q to rotate.`;
+HINTS.cornerwin = 'Click near a square wall corner to place the L-shaped window across it. Set each leg in Properties.';
+for (const [k, r] of Object.entries(ROOM_KINDS)) HINTS[k] = `Drag to draw a ${r.name.toLowerCase()} (dashed = roof line, open sides). Not counted in the indoor floor area.`;
 for (const [k, f] of Object.entries(FURN)) HINTS['furn:' + k] = `Click on the canvas to place ${f.name}. Q to rotate.`;
 
 function setHint(text, warn) {
@@ -55,6 +57,7 @@ function newOpening(type) {
   const w = type === 'door' ? state.def.doorW : type === 'window' ? state.def.winW : OPENINGS[type].w;
   const o = { id: uid(), type, x: 0, y: 0, rot: 0, fx: 1, fy: 1, w, t: state.def.wallT };
   if (type === 'double_uneven') o.split = 0.75;
+  if (type === 'cornerwin') o.w2 = OPENINGS.cornerwin.w2;
   return o;
 }
 
@@ -171,11 +174,22 @@ function nudgeSel(dx, dy) {
 
 /* ---------- Rooms ---------- */
 
-// Rectangle ({x, y, w, h}) or polygon (array of [x, y]) → new selected room
-function createRoom(shape) {
+// Default name for a new room of this kind: "Room 3", "Car Porch", "Car Porch 2", …
+function defaultRoomName(kind) {
+  const rooms = state.items.filter(i => i.type === 'room');
+  if (!ROOM_KINDS[kind]) return `Room ${rooms.length + 1}`;
+  const base = ROOM_KINDS[kind].name;
+  let name = base, n = 1;
+  while (rooms.some(r => r.name === name)) name = `${base} ${++n}`;
+  return name;
+}
+
+// Rectangle ({x, y, w, h}) or polygon (array of [x, y]) → new selected room.
+// kind = 'porch' / 'veranda' (see ROOM_KINDS), or nothing for an indoor room
+function createRoom(shape, kind) {
   commit();
-  const n = state.items.filter(i => i.type === 'room').length + 1;
-  const room = { id: uid(), type: 'room', ...(Array.isArray(shape) ? { pts: shape } : shape), name: `Room ${n}` };
+  const room = { id: uid(), type: 'room', ...(Array.isArray(shape) ? { pts: shape } : shape), name: defaultRoomName(kind) };
+  if (ROOM_KINDS[kind]) room.kind = kind;
   state.items.push(room);
   state.sel = [room.id];
   changed();
@@ -254,4 +268,62 @@ function applyTyped() {
   draft.y2 = draft.y1 + dy / d * L;
   finishSegment();
   setHint();
+}
+
+/* ---------- Columns for porch / veranda ---------- */
+
+// Columns made by "Add columns" carry colOf = room id, so they can be replaced or removed
+const roomColumns = r => state.items.filter(i => i.colOf === r.id);
+
+// Put columns along the open sides of a porch / veranda: on every corner that doesn't touch a
+// wall, plus extra columns so no open side has a gap wider than r.colSpacing. Each column sits
+// just inside the room, its outer faces flush with the room edges. Replaces earlier ones.
+function addRoomColumns(r) {
+  const kind = COLUMN_KINDS.includes(r.colKind) ? r.colKind : ROOM_KINDS[r.kind]?.col || 'col_square';
+  const def = FURN[kind], size = def.w, gap = r.colSpacing > 0 ? r.colSpacing : COL_SPACING;
+  const walls = state.items.filter(i => i.type === 'wall');
+  const nearWall = (x, y) => walls.some(w => segDist(x, y, w.x1, w.y1, w.x2, w.y2) <= w.t / 2 + 60);
+  const pts = roomPts(r), n = pts.length;
+  // Signed area > 0 = clockwise on screen (y down): inward normal of edge (ux, uy) is (-uy, ux)
+  let sa = 0;
+  for (let i = 0; i < n; i++) sa += pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1];
+  const sg = sa >= 0 ? 1 : -1;
+  const edges = pts.map((a, i) => {
+    const b = pts[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+    return { a, b, L, ux, uy, nx: -uy * sg, ny: ux * sg, rot: Math.atan2(uy, ux) * 180 / Math.PI };
+  });
+  const out = [], col = (x, y, rot) => out.push({ id: uid(), type: 'furn', kind, x, y, w: def.w, d: def.d, rot, fx: 1, colOf: r.id });
+
+  edges.forEach((e, i) => {
+    const prev = edges[(i + n - 1) % n];
+    // Corner at e.a: skip if it touches a wall
+    if (!nearWall(e.a[0], e.a[1])) {
+      col(e.a[0] + (e.nx + prev.nx) * size / 2, e.a[1] + (e.ny + prev.ny) * size / 2, e.rot);
+    }
+    // Open side (its middle is not against a wall): fill the span with evenly spaced columns
+    const mx = (e.a[0] + e.b[0]) / 2, my = (e.a[1] + e.b[1]) / 2;
+    if (nearWall(mx, my)) return;
+    const k = Math.ceil(e.L / gap);
+    for (let j = 1; j < k; j++) {
+      const t = e.L * j / k;
+      col(e.a[0] + e.ux * t + e.nx * size / 2, e.a[1] + e.uy * t + e.ny * size / 2, e.rot);
+    }
+  });
+
+  commit();
+  state.items = state.items.filter(i => i.colOf !== r.id);
+  if (out.length > 1) { const g = uid(); out.forEach(c => { c.g = g; }); }
+  state.items.push(...out);
+  changed();
+  setHint(out.length
+    ? `${out.length} column${out.length === 1 ? '' : 's'} added. They move together; double-click one to move or delete it on its own.`
+    : 'No open corners or sides found — every edge of this area is against a wall.', !out.length);
+}
+
+function removeRoomColumns(r) {
+  if (!roomColumns(r).length) return;
+  commit();
+  state.items = state.items.filter(i => i.colOf !== r.id);
+  changed();
 }

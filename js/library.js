@@ -381,3 +381,32 @@ Object.assign(FURN, {
     },
   },
 });
+
+/* ----- Columns (tiang) -----
+   cat 'structure' is not in FURN_CATS: the palette shows them in the "Porch & Veranda" section
+   (PALETTE_BASE in catalog.js). Class 'solid' = filled like a wall (cut column in plan). */
+const libCi = (cx, cy, r, c = '') => `<circle${cl(c)} cx="${n2(cx)}" cy="${n2(cy)}" r="${n2(r)}"/>`;
+
+Object.assign(FURN, {
+  col_square: {
+    cat: 'structure', name: 'Square Column', w: 200, d: 200, kw: 'column pillar post square rc concrete tiang segi empat konkrit porch',
+    draw: (W, D) => R(-W / 2, -D / 2, W, D, 0, 'solid'),
+  },
+  col_round: {
+    cat: 'structure', name: 'Round Column', w: 250, d: 250, kw: 'column pillar post round circular tiang bulat',
+    draw: (W, D) => El(0, 0, W / 2, D / 2).replace('<ellipse', '<ellipse class="solid"'),
+  },
+  col_roman: {
+    // Classical column in plan: square plinth, round base (torus), fluted round shaft
+    cat: 'structure', name: 'Roman Column', w: 400, d: 400, kw: 'column pillar roman classical doric tuscan fluted tiang roman klasik veranda',
+    draw: (W, D) => {
+      const m = Math.min(W, D), rs = m * 0.3, n = 16;
+      let s = R(-W / 2, -D / 2, W, D) + libCi(0, 0, m * 0.43) + libCi(0, 0, rs, 'solid');
+      for (let i = 0; i < n; i++) {
+        const a = i / n * 2 * Math.PI;
+        s += libCi(Math.cos(a) * rs * 0.82, Math.sin(a) * rs * 0.82, rs * 0.08, 'flute');
+      }
+      return s;
+    },
+  },
+});

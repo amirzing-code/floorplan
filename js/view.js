@@ -33,7 +33,7 @@ function bounds() {
   for (const it of state.items) {
     if (it.type === 'wall') { add(it.x1, it.y1, it.t / 2); add(it.x2, it.y2, it.t / 2); }
     else if (it.type === 'dim') { add(it.x1, it.y1); add(it.x2, it.y2); }
-    else if (it.type === 'room' || it.type === 'furn') { const b = itemBox(it); add(b.x0, b.y0); add(b.x1, b.y1); }
+    else if (it.type === 'room' || it.type === 'furn' || it.type === 'cornerwin') { const b = itemBox(it); add(b.x0, b.y0); add(b.x1, b.y1); }
     else add(it.x, it.y, it.w);
   }
   return x0 === Infinity ? null : { x0, y0, x1, y1 };
@@ -168,6 +168,7 @@ function furnMagnet(b, excludeIds = []) {
 
 // Place a door/window on the nearest wall (follows wall angle & thickness)
 function placeOpening(o, p, e) {
+  if (o.type === 'cornerwin') return placeCornerWin(o, p, e);
   let best = null, bd = Infinity;
   for (const w of state.items) {
     if (w.type !== 'wall') continue;
@@ -188,6 +189,41 @@ function placeOpening(o, p, e) {
     o.y = w.y1 + (w.y2 - w.y1) / L * along;
     o.rot = Math.atan2(w.y2 - w.y1, w.x2 - w.x1) * 180 / Math.PI;
     o.t = w.t;
+  } else {
+    o.x = e.altKey ? p.x : snapV(p.x);
+    o.y = e.altKey ? p.y : snapV(p.y);
+  }
+}
+
+// Place an L-shaped corner window on the nearest square wall corner (two walls whose ends meet
+// at 90°). Leg A runs along rot, leg B along rot + 90°. Away from a corner it is placed freely.
+function placeCornerWin(o, p, e) {
+  const ends = [];
+  for (const w of state.items) {
+    if (w.type !== 'wall') continue;
+    const L = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+    if (!L) continue;
+    const ux = (w.x2 - w.x1) / L, uy = (w.y2 - w.y1) / L;
+    // Direction points away from the corner
+    ends.push({ x: w.x1, y: w.y1, ux, uy, w }, { x: w.x2, y: w.y2, ux: -ux, uy: -uy, w });
+  }
+  let best = null, bd = Infinity;
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      const a = ends[i], b = ends[j];
+      if (a.w === b.w || Math.hypot(a.x - b.x, a.y - b.y) > 1) continue;
+      if (Math.abs(a.ux * b.ux + a.uy * b.uy) > 0.02) continue; // square corners only
+      const d = Math.hypot(p.x - a.x, p.y - a.y);
+      if (d < Math.max(a.w.t, b.w.t) / 2 + 40 / state.view.s && d < bd) { bd = d; best = [a, b]; }
+    }
+  }
+  if (best) {
+    // B must be A turned +90° (clockwise on screen, y points down)
+    const [a, b] = best, [A, B] = a.ux * b.uy - a.uy * b.ux > 0 ? [a, b] : [b, a];
+    o.x = A.x;
+    o.y = A.y;
+    o.rot = Math.atan2(A.uy, A.ux) * 180 / Math.PI;
+    o.t = Math.max(A.w.t, B.w.t);
   } else {
     o.x = e.altKey ? p.x : snapV(p.x);
     o.y = e.altKey ? p.y : snapV(p.y);

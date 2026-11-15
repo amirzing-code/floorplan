@@ -62,9 +62,9 @@ svg.addEventListener('pointerdown', e => {
     return;
   }
 
-  if (tool === 'room') {
+  if (isRoomRectTool(tool)) {
     const q = snapPoint(p, e);
-    drag = { mode: 'room', x0: q.x, y0: q.y };
+    drag = { mode: 'room', x0: q.x, y0: q.y, kind: tool === 'room' ? undefined : tool };
     draft = { type: 'room', x: q.x, y: q.y, w: 0, h: 0 };
     return render();
   }
@@ -224,7 +224,7 @@ svg.addEventListener('pointerup', () => {
   if (d.mode === 'room') {
     const r = draft;
     draft = null;
-    if (r.w > 0 && r.h > 0) return createRoom({ x: r.x, y: r.y, w: r.w, h: r.h });
+    if (r.w > 0 && r.h > 0) return createRoom({ x: r.x, y: r.y, w: r.w, h: r.h }, d.kind);
     return render();
   }
   if (d.mode === 'marquee') { renderProps(); return render(); }

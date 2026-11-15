@@ -7,6 +7,10 @@ const DOOR_TYPES = ['door', 'double', 'double_uneven', 'bifold1', 'bifold', 'sli
 // Cabinets measured as a running length (L-shapes: both legs minus the shared corner)
 const RUN_ITEMS = { kcab: 600, kcab_l: 600, upper_cab: 350, upper_cab_l: 350, island: 0 };
 
+// Opening width along the wall (corner windows: both legs)
+const opWidth = o => o.w + (o.type === 'cornerwin' ? o.w2 : 0);
+const opLabel = o => `${OPENINGS[o.type].name} — ${o.type === 'cornerwin' ? `${fmt(o.w)} × ${fmt(o.w2)}` : fmt(o.w)}`;
+
 // Distance from point to segment
 function segDist(px, py, ax, ay, bx, by) {
   const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
@@ -26,7 +30,9 @@ function roomOpenings(r, items) {
 // Rows [{ cat, item, qty, unit }] for one sheet's items. Lengths in mm / areas in mm² until formatted.
 function computeBQ(items) {
   const d = state.def, rows = [];
-  const rooms = items.filter(i => i.type === 'room');
+  // Porch / veranda: listed on their own, no skirting or wall finish (open sides)
+  const rooms = items.filter(i => i.type === 'room' && !isOutdoorRoom(i));
+  const outdoor = items.filter(i => i.type === 'room' && isOutdoorRoom(i));
   const walls = items.filter(i => i.type === 'wall');
   let floor = 0, skirting = 0, paint = 0;
 
@@ -35,16 +41,26 @@ function computeBQ(items) {
     const doors = ops.filter(o => DOOR_TYPES.includes(o.type)), wins = ops.filter(o => !DOOR_TYPES.includes(o.type));
     const area = roomArea(r), per = roomPerimeter(r);
     const sk = Math.max(0, per - doors.reduce((a, o) => a + o.w, 0));
-    const wall = Math.max(0, per * d.ceilH - doors.reduce((a, o) => a + o.w * d.doorH, 0) - wins.reduce((a, o) => a + o.w * d.winH, 0));
+    const wall = Math.max(0, per * d.ceilH - doors.reduce((a, o) => a + o.w * d.doorH, 0) - wins.reduce((a, o) => a + opWidth(o) * d.winH, 0));
     rows.push({ cat: 'Floor', item: name, qty: area, unit: 'area' });
     rows.push({ cat: 'Skirting', item: name, qty: sk, unit: 'len' });
     rows.push({ cat: 'Wall finish (paint)', item: name, qty: wall, unit: 'area' });
     floor += area; skirting += sk; paint += wall;
   }
   if (rooms.length) {
-    rows.push({ cat: 'Floor', item: 'Total floor area', qty: floor, unit: 'area', total: true });
+    rows.push({ cat: 'Floor', item: outdoor.length ? 'Total floor area (indoor)' : 'Total floor area', qty: floor, unit: 'area', total: true });
     rows.push({ cat: 'Skirting', item: 'Total skirting', qty: skirting, unit: 'len', total: true });
     rows.push({ cat: 'Wall finish (paint)', item: 'Total wall finish', qty: paint, unit: 'area', total: true });
+  }
+
+  if (outdoor.length) {
+    let tot = 0;
+    for (const r of outdoor) {
+      const area = roomArea(r);
+      rows.push({ cat: 'Porch & veranda', item: r.name || ROOM_KINDS[r.kind].name, qty: area, unit: 'area' });
+      tot += area;
+    }
+    rows.push({ cat: 'Porch & veranda', item: 'Total porch & veranda', qty: tot, unit: 'area', total: true });
   }
 
   if (walls.length) {
@@ -64,13 +80,15 @@ function computeBQ(items) {
     for (const [k, n] of [...g].sort()) rows.push({ cat, item: k, qty: n, unit: 'no.' });
   };
   const ops = items.filter(isOpening);
-  count('Doors & openings', ops.filter(o => DOOR_TYPES.includes(o.type)), o => `${OPENINGS[o.type].name} — ${fmt(o.w)}`);
-  count('Windows', ops.filter(o => !DOOR_TYPES.includes(o.type)), o => `${OPENINGS[o.type].name} — ${fmt(o.w)}`);
+  count('Doors & openings', ops.filter(o => DOOR_TYPES.includes(o.type)), opLabel);
+  count('Windows', ops.filter(o => !DOOR_TYPES.includes(o.type)), opLabel);
 
   const furn = items.filter(i => i.type === 'furn' && FURN[i.kind]);
   const isElec = f => FURN[f.kind].cat === 'electrical';
   count('Electrical', furn.filter(isElec), f => FURN[f.kind].name);
-  count('Furniture & fixtures', furn.filter(f => !isElec(f)), f => `${FURN[f.kind].name} — ${fmt(f.w)} × ${fmt(f.d)}`);
+  const isCol = f => FURN[f.kind].cat === 'structure';
+  count('Columns', furn.filter(isCol), f => `${FURN[f.kind].name} — ${fmt(f.w)} × ${fmt(f.d)}`);
+  count('Furniture & fixtures', furn.filter(f => !isElec(f) && !isCol(f)), f => `${FURN[f.kind].name} — ${fmt(f.w)} × ${fmt(f.d)}`);
 
   // Cabinet running lengths
   const runs = {};

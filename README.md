@@ -10,7 +10,9 @@ A lightweight floor plan editor that runs entirely in the browser. It is a plain
   - drag a rectangle;
   - click the corners of a polygon (L- or U-shaped);
   - use **Auto Room**: click inside the walls and the room is created to fit them exactly.
-- **Doors and windows** snap onto walls: door, double, unequal double, bi-fold, double bi-fold, 2- and 3-panel sliding, pocket door, roller shutter, cased opening, window, sliding window and louvre (nako).
+- **Car porch and veranda:** covered areas with open sides, drawn with a dashed roof line. Any room can be switched to one of these under *Type* in Properties. Their area is listed separately from the indoor floor area in the Summary and the BQ, and they get no skirting or wall finish.
+- **Columns:** square, round and Roman (classical) columns, in the *Porch & Veranda* section. Select a porch or veranda and press **Add columns** in Properties. Columns go on every corner and open side that does not touch a wall, spaced no more than the *Max spacing* apart. By default a porch gets square columns and a veranda gets Roman ones. Columns are counted on their own in the BQ.
+- **Doors and windows** snap onto walls: door, double, unequal double, bi-fold, double bi-fold, 2- and 3-panel sliding, pocket door, roller shutter, cased opening, window, sliding window, louvre (nako) and L-shaped corner window (snaps onto a square wall corner, with a separate length for each leg).
 - **Furniture and fixtures library:** about 66 symbols in Living, Bedroom, Kitchen, Bathroom, Electrical and Outdoor. Items snap to wall faces and show alignment guides.
 - **Annotations:** text labels and a north arrow.
 - **Editing:** multi-select, groups (Ctrl+G), copy and paste across sheets.

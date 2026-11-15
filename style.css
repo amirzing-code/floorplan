@@ -41,6 +41,10 @@
   --cv-grid-major: #d8dce2;
   --cv-room: #f5f1e8;
   --cv-room-line: #cfc7b6;
+  --cv-porch: #eceef1;
+  --cv-porch-line: #8a9099;
+  --cv-veranda: #eef3e6;
+  --cv-veranda-line: #8d9a78;
   --cv-ink: #2b2b2b;
   --cv-furn: #555555;
   --cv-label: #333333;
@@ -73,6 +77,10 @@
     --cv-grid-major: #34373b;
     --cv-room: #26282c;
     --cv-room-line: #43474d;
+    --cv-porch: #23272d;
+    --cv-porch-line: #7d848e;
+    --cv-veranda: #252a22;
+    --cv-veranda-line: #7f8c6c;
     --cv-ink: #e3e3e3;
     --cv-furn: #b9bcc1;
     --cv-label: #e3e3e3;
@@ -107,6 +115,10 @@
   --cv-grid-major: #34373b;
   --cv-room: #26282c;
   --cv-room-line: #43474d;
+  --cv-porch: #23272d;
+  --cv-porch-line: #7d848e;
+  --cv-veranda: #252a22;
+  --cv-veranda-line: #7f8c6c;
   --cv-ink: #e3e3e3;
   --cv-furn: #b9bcc1;
   --cv-label: #e3e3e3;
@@ -320,6 +332,8 @@ main.pal-collapsed .palette { display: none; }
 }
 .ficon * { fill: none; stroke: currentColor; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .ficon .hit { stroke: none; }
+.ficon .solid { fill: currentColor; }
+.ficon .flute { fill: var(--surface); stroke: none; }
 .pal-note { margin: 12px 8px 0; font-size: 11.5px; line-height: 1.6; color: var(--muted); }
 
 .drag-ghost {
@@ -477,7 +491,7 @@ input[type=range] { height: auto; padding: 0; background: none; border: 0; accen
   margin-bottom: 8px;
 }
 .field > span:first-child { font-size: 13px; }
-.field input { width: 100%; }
+.field input, .field select { width: 100%; }
 .field-wide { grid-template-columns: 1fr; gap: 4px; }
 textarea {
   width: 100%;

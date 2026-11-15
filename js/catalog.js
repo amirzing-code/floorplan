@@ -259,13 +259,23 @@ const TOOL_META = {
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M0 12h5M19 12h5" stroke-width="5"/><path d="M5 9.5h14M5 14.5h14" stroke-dasharray="2 2"/></svg>' },
   window: { label: 'Window', title: 'Window (N)', kw: 'window tingkap',
     icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="9" width="20" height="6"/><path d="M2 12h20"/></svg>' },
+  cornerwin: { label: 'L Corner Window', title: 'L-shaped corner window — place on a wall corner', kw: 'window corner l-shaped l bay tingkap sudut bucu bentuk l',
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21V3h18v6H9v12z"/><path d="M6 21V6h15"/></svg>' },
+  porch: { label: 'Car Porch', title: 'Car porch — drag a rectangle (covered, open sides)', kw: 'porch car porch anjung kereta garaj parking bumbung',
+    icon: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2"/><rect x="8.5" y="7" width="7" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>' },
+  veranda: { label: 'Veranda', title: 'Veranda — drag a rectangle (covered, open sides)', kw: 'veranda verandah patio terrace beranda anjung serambi',
+    icon: '<svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="12" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3 2"/><path d="M2 7h20" stroke="currentColor" stroke-width="2.5"/><circle cx="5" cy="17" r="1.3" fill="currentColor"/><circle cx="19" cy="17" r="1.3" fill="currentColor"/></svg>' },
 };
+
+// Tools that drag out a rectangular room (porch / veranda set room.kind)
+const isRoomRectTool = t => t === 'room' || Object.hasOwn(ROOM_KINDS, t);
 
 // Fixed palette sections; furniture sections are appended from FURN_CATS in ui.js
 // (after js/library.js has added its items and categories)
 const PALETTE_BASE = [
   { id: 'basic', name: 'Basics', kw: 'asas', tools: ['select', 'wall', 'room', 'room_poly', 'room_auto', 'dim'] },
-  { id: 'openings', name: 'Doors & Windows', kw: 'pintu tingkap', tools: ['door', 'double', 'double_uneven', 'bifold1', 'bifold', 'slide2', 'slide3', 'pocket', 'roller', 'opening', 'window', 'slidewin', 'louvre'] },
+  { id: 'openings', name: 'Doors & Windows', kw: 'pintu tingkap', tools: ['door', 'double', 'double_uneven', 'bifold1', 'bifold', 'slide2', 'slide3', 'pocket', 'roller', 'opening', 'window', 'slidewin', 'louvre', 'cornerwin'] },
+  { id: 'areas', name: 'Porch & Veranda', kw: 'luar anjung beranda kawasan tiang column', tools: ['porch', 'veranda', 'furn:col_square', 'furn:col_round', 'furn:col_roman'] },
   { id: 'annotations', name: 'Annotations', kw: 'anotasi nota label', tools: ['text', 'north'] },
 ];
 

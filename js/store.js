@@ -112,10 +112,13 @@ function nextSheetName() {
 // Clone items with new ids; groups are copied as new groups
 // (a lone member of a group does not keep the group id)
 function cloneItems(items) {
-  const count = {}, gmap = {};
+  const count = {}, gmap = {}, ids = {};
   for (const it of items) if (it.g) count[it.g] = (count[it.g] || 0) + 1;
+  for (const it of items) ids[it.id] = uid();
   return items.map(it => {
-    const c = { ...it, id: uid() };
+    const c = { ...it, id: ids[it.id] };
+    // Porch / veranda columns stay linked only if their room is copied too
+    if (c.colOf) { if (ids[c.colOf]) c.colOf = ids[c.colOf]; else delete c.colOf; }
     if (c.g) {
       if (count[c.g] > 1) c.g = gmap[c.g] ||= uid();
       else delete c.g;

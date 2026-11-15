@@ -48,7 +48,7 @@ function dropTool(d, e) {
   setTool(d.tool);
   if (d.tool === 'room_auto') return autoRoom(p);
   if (d.tool === 'room_poly') return startPoly(snapPoint(p, e));
-  if (d.tool !== 'room') {
+  if (!isRoomRectTool(d.tool)) {
     const q = snapPoint(p, e);
     draft = { type: d.tool, x1: q.x, y1: q.y, x2: q.x, y2: q.y };
     render();

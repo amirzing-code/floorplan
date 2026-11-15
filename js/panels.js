@@ -7,6 +7,29 @@ function field(lbl, key, value, kind = 'len') {
   return `<div class="field"><span class="muted">${lbl}</span><input data-key="${key}" data-kind="${kind}" value="${esc(value)}"></div>`;
 }
 
+// Room type: indoor room / car porch / veranda
+function kindField(r) {
+  const opts = [['', 'Room (indoor)'], ...Object.entries(ROOM_KINDS).map(([k, v]) => [k, v.name])];
+  return `<div class="field"><span class="muted">Type</span><select data-key="kind" data-kind="text">` +
+    opts.map(([k, n]) => `<option value="${k}"${(r.kind || '') === k ? ' selected' : ''}>${esc(n)}</option>`).join('') +
+    `</select></div>`;
+}
+
+// Porch / veranda: column style, spacing and the Add columns button
+function columnsBlock(r) {
+  if (!isOutdoorRoom(r)) return '';
+  const cur = COLUMN_KINDS.includes(r.colKind) ? r.colKind : ROOM_KINDS[r.kind].col;
+  const n = roomColumns(r).length;
+  return `<h3>Columns</h3>` +
+    `<div class="field"><span class="muted">Style</span><select data-key="colKind" data-kind="text">` +
+    COLUMN_KINDS.map(k => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(FURN[k].name)} (${fmt(FURN[k].w)})</option>`).join('') +
+    `</select></div>` +
+    field('Max spacing', 'colSpacing', fmtVal(r.colSpacing > 0 ? r.colSpacing : COL_SPACING)) +
+    `<div class="btnrow"><button data-act="addCols">${n ? 'Redo columns' : 'Add columns'}</button>` +
+    (n ? `<button data-act="rmCols">Remove ${n}</button>` : '') + `</div>` +
+    `<p class="note">Places columns on corners and open sides that don't touch a wall.</p>`;
+}
+
 function renderProps() {
   const el = $('#props');
   const it = getSel();
@@ -52,24 +75,27 @@ function renderProps() {
   } else if (it.type === 'north') {
     html = `<h3>North Arrow</h3>` + field('Size', 'size', fmtVal(it.size)) + field('Rotation (°)', 'rot', num(it.rot || 0, 2), 'num');
   } else if (it.type === 'room' && it.pts) {
-    html = `<h3>Room (polygon)</h3>` + field('Name', 'name', it.name || '', 'text') +
+    html = `<h3>${isOutdoorRoom(it) ? ROOM_KINDS[it.kind].name : 'Room'} (polygon)</h3>` + field('Name', 'name', it.name || '', 'text') + kindField(it) +
       field('Area', '', fmtArea(polyArea(it.pts)), 'ro') +
       field('Perimeter', '', fmt(polyPerimeter(it.pts)), 'ro') +
       field('Corners', '', String(it.pts.length), 'ro') +
-      `<p class="note">Drag the corner handles to reshape.</p>`;
+      `<p class="note">Drag the corner handles to reshape.</p>` + columnsBlock(it);
   } else if (it.type === 'room') {
-    html = `<h3>Room</h3>` + field('Name', 'name', it.name || '', 'text') +
+    html = `<h3>${isOutdoorRoom(it) ? ROOM_KINDS[it.kind].name : 'Room'}</h3>` + field('Name', 'name', it.name || '', 'text') + kindField(it) +
       field('Width', 'w', fmtVal(it.w)) + field('Depth', 'h', fmtVal(it.h)) +
       field('Area', '', fmtArea(it.w * it.h), 'ro') +
-      field('Perimeter', '', fmt(2 * (it.w + it.h)), 'ro');
+      field('Perimeter', '', fmt(2 * (it.w + it.h)), 'ro') + columnsBlock(it);
   } else if (isOpening(it)) {
     const def = OPENINGS[it.type];
-    html = `<h3>${def.name}</h3>` + field('Width', 'w', fmtVal(it.w));
+    html = `<h3>${def.name}</h3>` + (it.type === 'cornerwin'
+      ? field('Leg A', 'w', fmtVal(it.w)) + field('Leg B', 'w2', fmtVal(it.w2)) + field('Total width', '', fmt(it.w + it.w2), 'ro')
+      : field('Width', 'w', fmtVal(it.w)));
     if (it.type === 'double_uneven') {
       const a = it.w * (it.split ?? 0.75);
       html += field('Large leaf', 'main', fmtVal(a)) + field('Small leaf', '', fmt(it.w - a), 'ro');
     }
     html += field('Rotation (°)', 'rot', num(it.rot || 0, 2), 'num') + field('Wall thickness', 't', fmtVal(it.t));
+    if (it.type === 'cornerwin') html += `<p class="note">Legs are measured from the corner where the wall centrelines meet. Drag it onto a square wall corner to attach it.</p>`;
     if (def.fx || def.fy) {
       html += `<div class="btnrow">${def.fx ? `<button data-act="fx">${def.fx}</button>` : ''}${def.fy ? `<button data-act="fy">${def.fy}</button>` : ''}</div>`;
     }
@@ -96,7 +122,7 @@ function focusTextField() {
 }
 
 function typeLabel(i) {
-  if (i.type === 'room') return 'Room';
+  if (i.type === 'room') return isOutdoorRoom(i) ? ROOM_KINDS[i.kind].name : 'Room';
   if (i.type === 'wall') return 'Wall';
   if (i.type === 'dim') return 'Dimension';
   if (i.type === 'furn') return FURN[i.kind]?.name ?? 'Furniture';
@@ -137,6 +163,14 @@ function applyField(key, kind, raw) {
     if (key === 't') { it.t = v; state.def.wallT = v; }
     it.x2 = it.x1 + Math.cos(a) * len;
     it.y2 = it.y1 + Math.sin(a) * len;
+  } else if (it.type === 'room' && key === 'kind') {
+    // Rename too, if the room still has a default name ("Room 2", "Car Porch", "Veranda 3", …)
+    const defaults = ['Room', ...Object.values(ROOM_KINDS).map(k => k.name)];
+    const nm = it.name || '';
+    const isDefault = !nm || defaults.some(d => nm === d || (nm.startsWith(d + ' ') && /^\d+$/.test(nm.slice(d.length + 1))));
+    if (ROOM_KINDS[v]) it.kind = v; else delete it.kind;
+    // Clear the old name first so it doesn't count as taken
+    if (isDefault) { it.name = ''; it.name = defaultRoomName(it.kind); }
   } else if (it.type === 'room') {
     if (key === 'name') it.name = v;
     else it[key] = v;
@@ -166,6 +200,8 @@ $('#props').addEventListener('click', e => {
   if (act === 'ungroup') return ungroupSel();
   const it = getSel();
   if (!it) return;
+  if (act === 'addCols') return addRoomColumns(it);
+  if (act === 'rmCols') return removeRoomColumns(it);
   commit();
   if (act === 'bold') it.bold = !it.bold;
   else it[act] = -(it[act] || 1);
@@ -177,6 +213,7 @@ function renderSummary() {
   const walls = state.items.filter(i => i.type === 'wall');
   const wallLen = walls.reduce((a, w) => a + Math.hypot(w.x2 - w.x1, w.y2 - w.y1), 0);
   const total = rooms.reduce((a, r) => a + roomArea(r), 0);
+  const outdoor = rooms.filter(isOutdoorRoom).reduce((a, r) => a + roomArea(r), 0);
   let html = '';
   if (rooms.length) {
     html += `<table><thead><tr><th>Room</th><th class="num">Size</th><th class="num">Area</th></tr></thead><tbody>`;
@@ -184,7 +221,10 @@ function renderSummary() {
       const size = r.pts ? `${r.pts.length} sides` : `${fmt(r.w)} × ${fmt(r.h)}`;
       html += `<tr><td>${esc(r.name || 'Room')}</td><td class="num">${esc(size)}</td><td class="num">${fmtArea(roomArea(r))}</td></tr>`;
     }
-    html += `</tbody><tfoot><tr><td>Total</td><td></td><td class="num">${fmtArea(total)}</td></tr></tfoot></table>`;
+    html += `</tbody><tfoot>` + (outdoor
+      ? `<tr><td>Indoor</td><td></td><td class="num">${fmtArea(total - outdoor)}</td></tr>` +
+        `<tr><td>Porch &amp; veranda</td><td></td><td class="num">${fmtArea(outdoor)}</td></tr>`
+      : '') + `<tr><td>Total</td><td></td><td class="num">${fmtArea(total)}</td></tr></tfoot></table>`;
   } else {
     html += `<p class="muted">No rooms yet.</p>`;
   }

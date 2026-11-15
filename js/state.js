@@ -45,6 +45,10 @@ function itemBox(it) {
     const xs = it.pts.map(p => p[0]), ys = it.pts.map(p => p[1]);
     return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
   }
+  if (it.type === 'cornerwin') {
+    const p = cornerWinPts(it), xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+    return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+  }
   const a = (it.rot || 0) * Math.PI / 180;
   if (it.type === 'text' || it.type === 'north') {
     // Text: estimated width from character count; north arrow: square of `size`
@@ -88,6 +92,29 @@ const OPENINGS = {
   window:        { name: 'Window', w: 1200 },
   slidewin:      { name: 'Sliding Window', w: 1200, fx: 'Swap panel order' },
   louvre:        { name: 'Louvre Window (Nako)', w: 600 },
+  // L-shaped corner window: sits on a wall corner. w = leg A (along rot), w2 = leg B (rot + 90°),
+  // both measured from the corner point (where the wall centrelines meet)
+  cornerwin:     { name: 'L-Shaped Corner Window', w: 1200, w2: 1200 },
 };
+
+// Corner window outline (mm, world coords): the L-shaped band of wall it replaces.
+// ht = thickness / 2 (pass a larger value for an easier hit area)
+function cornerWinPts(o, ht = o.t / 2) {
+  const a = (o.rot || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
+  return [[-ht, -ht], [o.w, -ht], [o.w, ht], [ht, ht], [ht, o.w2], [-ht, o.w2]]
+    .map(([px, py]) => [o.x + px * ux - py * uy, o.y + px * uy + py * ux]);
+}
+
+// Room kinds (room.kind). No kind = ordinary indoor room.
+// Porch / veranda are covered open areas: drawn with a dashed roof line, and the BQ keeps
+// them out of the indoor floor total, skirting and wall finish.
+// col = default column for "Add columns" (a FURN kind)
+const ROOM_KINDS = {
+  porch:   { name: 'Car Porch', col: 'col_square' },
+  veranda: { name: 'Veranda', col: 'col_roman' },
+};
+const COLUMN_KINDS = ['col_square', 'col_round', 'col_roman'];
+const COL_SPACING = 3000; // default max distance between columns (mm)
+const isOutdoorRoom = r => Object.hasOwn(ROOM_KINDS, r.kind || '');
 const isOpeningType = t => Object.hasOwn(OPENINGS, t);
 const isOpening = it => isOpeningType(it.type);

@@ -120,13 +120,15 @@
         .g-minor{stroke:var(--cv-grid,#eef0f3);stroke-width:1}
         .g-major{stroke:var(--cv-grid-major,#d8dce2);stroke-width:1}
         .room{fill:var(--cv-room,#f5f1e8);stroke:var(--cv-room-line,#cfc7b6);stroke-width:1}
+        .room.porch{fill:var(--cv-porch,#eceef1);stroke:var(--cv-porch-line,#8a9099);stroke-width:1.2;stroke-dasharray:10 5}
+        .room.veranda{fill:var(--cv-veranda,#eef3e6);stroke:var(--cv-veranda-line,#8d9a78);stroke-width:1.2;stroke-dasharray:10 5}
         .room.sel{fill:var(--cv-accent-soft,#e8f0fe);stroke:var(--cv-accent,#0b57d0)}
         .wall{fill:var(--cv-ink,#2b2b2b);stroke:none}
         .wall.sel{fill:var(--cv-accent,#0b57d0)}
         .wall-hit{stroke:transparent;fill:none}
         .handle.first{fill:var(--cv-accent,#0b57d0)}
         .op-cover{fill:var(--cv-paper,#fff)}
-        .hit{fill:transparent;stroke:none}
+        .hit,.op path.hit{fill:transparent;stroke:none}
         .op line,.op path,.op .frame,.op .panel{fill:none;stroke:var(--cv-ink,#2b2b2b);stroke-width:1.5}
         .op .frame,.op .panel{fill:var(--cv-paper,#fff)}
         .op .panel{stroke-width:1.2}
@@ -135,8 +137,11 @@
         .sel line,.sel path,.sel .frame,.sel .panel{stroke:var(--cv-accent,#0b57d0)}
         .fu rect:not(.hit),.fu circle,.fu ellipse,.fu path{fill:var(--cv-paper,#fff);stroke:var(--cv-furn,#555);stroke-width:1}
         .fu line,.fu .nf{fill:none;stroke:var(--cv-furn,#555);stroke-width:1}
+        .fu rect.solid,.fu circle.solid,.fu ellipse.solid{fill:var(--cv-ink,#2b2b2b);stroke:var(--cv-ink,#2b2b2b)}
+        .fu circle.flute,.fu.sel circle.flute{fill:var(--cv-paper,#fff);stroke:none}
         .fu .dash{stroke-dasharray:3 3;stroke-width:.8}
         .fu.sel rect:not(.hit),.fu.sel circle,.fu.sel ellipse,.fu.sel path,.fu.sel line{stroke:var(--cv-accent,#0b57d0)}
+        .fu.sel rect.solid,.fu.sel circle.solid,.fu.sel ellipse.solid{fill:var(--cv-accent,#0b57d0)}
         .dim line{stroke:var(--cv-dim,#c0392b);stroke-width:1}
         .dim .hitline{stroke:transparent;stroke-width:12}
         .dim.sel line{stroke:var(--cv-accent,#0b57d0)}
@@ -261,7 +266,7 @@
         <select id="bqSheets"><option value="current">Current sheet</option><option value="all">All sheets</option></select>
       </label>
     </div>
-    <p class="note">Heights in <b id="bqUnitNote"></b>. Wall finish = room perimeter × ceiling height, minus the doors and windows on that room's walls. Skirting = room perimeter minus door widths.</p>
+    <p class="note">Heights in <b id="bqUnitNote"></b>. Wall finish = room perimeter × ceiling height, minus the doors and windows on that room's walls. Skirting = room perimeter minus door widths. Car porch and veranda areas are listed separately and are not included in the indoor floor area.</p>
     <div class="bq-table" id="bqTable"></div>
     <div class="dlg-actions">
       <button value="close">Close</button>

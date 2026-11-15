@@ -47,9 +47,10 @@ const polyPath = pts => 'M' + pts.map(([x, y]) => `${X(x).toFixed(1)} ${Y(y).toF
 
 function roomSvg(r, sel) {
   const s = state.view.s;
+  const cls = `room${isOutdoorRoom(r) ? ' ' + r.kind : ''}${sel ? ' sel' : ''}`;
   const out = r.pts
-    ? `<path class="room${sel ? ' sel' : ''}" data-id="${r.id}" d="${polyPath(r.pts)}"/>`
-    : `<rect class="room${sel ? ' sel' : ''}" data-id="${r.id}" x="${X(r.x).toFixed(1)}" y="${Y(r.y).toFixed(1)}" width="${(r.w * s).toFixed(1)}" height="${(r.h * s).toFixed(1)}"/>`;
+    ? `<path class="${cls}" data-id="${r.id}" d="${polyPath(r.pts)}"/>`
+    : `<rect class="${cls}" data-id="${r.id}" x="${X(r.x).toFixed(1)}" y="${Y(r.y).toFixed(1)}" width="${(r.w * s).toFixed(1)}" height="${(r.h * s).toFixed(1)}"/>`;
   let lbl = '';
   const b = itemBox(r);
   if (state.labels && (b.x1 - b.x0) * s > 60 && (b.y1 - b.y0) * s > 40) {
@@ -74,7 +75,34 @@ function wallSvg(w, sel, walls) {
   return { out, lbl };
 }
 
+// L-shaped corner window: frame over the L-shaped band of wall, glass line along both centrelines
+function cornerWinSvg(o, sel) {
+  const s = state.view.s;
+  const a = (o.rot || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
+  const ea = [o.x + ux * o.w, o.y + uy * o.w], eb = [o.x - uy * o.w2, o.y + ux * o.w2];
+  const P = ([x, y]) => `${X(x).toFixed(1)} ${Y(y).toFixed(1)}`;
+  const out = `<g class="op cornerwin${sel ? ' sel' : ''}" data-id="${o.id}">` +
+    `<path class="hit" d="${polyPath(cornerWinPts(o, Math.max(o.t / 2, 6 / s)))}"/>` +
+    `<path class="frame" d="${polyPath(cornerWinPts(o, Math.max(o.t / 2, 1.5 / s)))}"/>` +
+    `<path d="M${P(ea)}L${P([o.x, o.y])}L${P(eb)}"/></g>`;
+  let lbl = '';
+  if (state.labels && sel) {
+    // Leg lengths on the outside of each leg (outward normal = away from the other leg)
+    const off = o.t * s / 2 + 10;
+    const leg = ([x2, y2], nx, ny, len) => {
+      if (len * s < 34) return '';
+      let ang = Math.atan2(y2 - o.y, x2 - o.x) * 180 / Math.PI;
+      if (ang > 90) ang -= 180;
+      if (ang <= -90) ang += 180;
+      return label((X(o.x) + X(x2)) / 2 + nx * off, (Y(o.y) + Y(y2)) / 2 + ny * off, fmt(len), '', ang);
+    };
+    lbl = leg(ea, uy, -ux, o.w) + leg(eb, -ux, -uy, o.w2);
+  }
+  return { out, lbl };
+}
+
 function openingSvg(o, sel) {
+  if (o.type === 'cornerwin') return cornerWinSvg(o, sel);
   const s = state.view.s;
   const w = o.w * s, t = Math.max(o.t * s, 3), hw = w / 2, ht = t / 2;
   const tr = `translate(${X(o.x).toFixed(1)} ${Y(o.y).toFixed(1)}) rotate(${o.rot || 0}) scale(${o.fx || 1} ${o.fy || 1})`;
